@@ -58,3 +58,35 @@ with tab2:
 with tab3:
     st.header("إدارة البيانات")
     # (هنا تكمل كود إدارة المهام الخاص بك)
+def get_secret(key):
+    try:
+        # المحاولة الأولى: قراءة من الـ secrets المربوطة بـ Streamlit
+        return st.secrets.get(key)
+    except Exception:
+        # لو مفيش secrets، ارجع لمتغيرات البيئة
+        return os.environ.get(key)
+# --- التبويب الثالث: إدارة المهام ---
+with tab3:
+    st.header("➕ إضافة مهمة جديدة")
+    
+    with st.form("add_task_form"):
+        task_name = st.text_input("اسم المهمة")
+        assigned_to = st.text_input("المسند إليه")
+        deadline = st.date_input("تاريخ التسليم")
+        
+        submit = st.form_submit_button("إضافة المهمة")
+        
+        if submit:
+            if task_name and assigned_to:
+                # استدعاء الدالة اللي بتضيف في قاعدة البيانات
+                add_new_task(st.session_state['db_config'], task_name, assigned_to, str(deadline))
+                st.success(f"تم إضافة المهمة: {task_name}")
+            else:
+                st.error("من فضلك املأ البيانات الأساسية.")
+
+    st.write("---")
+    st.header("🔄 تحديث حالة المهام")
+    task_id = st.number_input("رقم المهمة (ID)", min_value=1)
+    if st.button("تحديث الحالة إلى مكتمل"):
+        update_task_status(st.session_state['db_config'], task_id, "Completed")
+        st.success(f"تم تحديث المهمة رقم {task_id}")
