@@ -43,3 +43,18 @@ with tab2:
 with tab3:
     st.header("إدارة البيانات")
     # (هنا كود الـ CRUD اللي إنت عامله)
+with tab1:
+    st.header("إعدادات الاتصال")
+    
+    # محاولة قراءة البيانات من الـ Secrets (اللي إنت دخلتها في الموقع)
+    if 'DB_HOST' in st.secrets:
+        db_config = {
+            "host": st.secrets['DB_HOST'],
+            "database": st.secrets['DB_NAME'],
+            "user": st.secrets['DB_USER'],
+            "password": st.secrets['DB_PASS']
+        }
+        st.session_state['db_config'] = db_config
+        st.success("✅ تم الاتصال بقاعدة البيانات بنجاح من الـ Secrets!")
+    else:
+        st.error("❌ لم يتم العثور على بيانات الاتصال في الـ Secrets. تأكد من إعداداتها.")
