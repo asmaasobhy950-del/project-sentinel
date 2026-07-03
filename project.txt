@@ -1,0 +1,8 @@
+project_sentinel/
+│
+├── app.py                 # الواجهة الرسومية للمنتج (Streamlit UI)
+├── agent_core.py          # عقل الـ Agent (الاتصال بـ Postgres و Gemini AI)
+├── notifier.py            # قنوات التوصيل (إرسال الـ Gmail والـ WhatsApp)
+├── Dockerfile             # ملف تغليف التطبيق وتحويله لـ Container
+├── docker-compose.yml     # ملف تشغيل الـ Database والـ Agent معاً بـ أمر واحد
+└── requirements.txt       # ملف حصر المكتبات المطلوبة للتشغيل
