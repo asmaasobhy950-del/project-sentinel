@@ -1,12 +1,10 @@
 import streamlit as st
-import os
-from agent_core import add_new_task, get_overdue_tasks # استدعاء الدوال المطلوبة
+from agent_core import add_new_task, get_overdue_tasks
 
-# إعداد الصفحة
 st.set_page_config(page_title="Project Sentinel", layout="wide")
 st.title("🤖 Project Sentinel")
 
-# تهيئة الاتصال (مظلة الأمان)
+# تهيئة الاتصال
 if 'db_config' not in st.session_state:
     try:
         st.session_state['db_config'] = {
@@ -18,8 +16,29 @@ if 'db_config' not in st.session_state:
     except:
         st.session_state['db_config'] = None
 
+# تعريف التبويبات مرة واحدة في بداية الصفحة
 tab1, tab2, tab3 = st.tabs(["🔗 الإعدادات", "📊 تشغيل الـ Agent", "➕ إدارة المهام"])
 
+# --- التبويب الأول ---
+with tab1:
+    st.header("إعدادات الاتصال")
+    if st.session_state.get('db_config'):
+        st.success("✅ متصل بقاعدة البيانات بنجاح!")
+    else:
+        st.error("❌ فشل الاتصال.")
+
+# --- التبويب الثاني ---
+with tab2:
+    st.header("📊 تشغيل الـ Agent")
+    if st.button("🚀 فحص المهام"):
+        config = st.session_state.get('db_config')
+        if config:
+            tasks = get_overdue_tasks(config)
+            st.write(tasks)
+        else:
+            st.error("لا يوجد اتصال.")
+
+# --- التبويب الثالث ---
 with tab3:
     st.header("➕ إضافة مهمة جديدة")
     with st.form("add_task_form", clear_on_submit=True):
@@ -32,10 +51,9 @@ with tab3:
         config = st.session_state.get('db_config')
         if config and task_name and assigned_to:
             try:
-                # إرسال 5 قيم كاملة (db_config, name, assigned, deadline, status)
                 add_new_task(config, task_name, assigned_to, str(deadline), "In Progress")
                 st.success("✅ تمت إضافة المهمة بنجاح!")
             except Exception as e:
-                st.error(f"خطأ في قاعدة البيانات: {e}")
+                st.error(f"خطأ: {e}")
         else:
-            st.error("❌ تأكد من الاتصال ومن ملء كافة الحقول.")
+            st.warning("⚠️ يرجى ملء البيانات.")
