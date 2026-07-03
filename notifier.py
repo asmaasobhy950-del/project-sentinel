@@ -1,18 +1,19 @@
+import os
 import pywhatkit as kit
-import time
-import streamlit as st
+
+def is_cloud_env():
+    # التحقق إذا كنا بنشتغل على سيرفر (Streamlit Cloud)
+    return "STREAMLIT_SERVER_PORT" in os.environ
 
 def send_whatsapp_reminder(phone_number, text_message):
-    """
-    دالة لإرسال رسالة تذكيرية عبر الواتساب ويب تلقائياً
-    """
+    if is_cloud_env():
+        print("⚠️ إرسال الواتساب متاح فقط محلياً (Local).")
+        return False
+    
     try:
-        # التأكد إن الرقم بيبدأ بمفتاح الدولة (مثل +20)
         if not phone_number.startswith('+'):
             phone_number = '+' + phone_number
         
-        # إرسال الرسالة فوراً (تفتح المتصفح وتبعت بعد 15 ثانية تلقائياً وتقفل التاب)
-        # يمكنك تعديل وقت الانتظار إذا كان الإنترنت بطيئاً
         kit.sendwhatmsg_instantly(
             phone_no=phone_number,
             message=text_message,
@@ -21,9 +22,5 @@ def send_whatsapp_reminder(phone_number, text_message):
         )
         return True
     except Exception as e:
-        st.error(f"خطأ أثناء إرسال رسالة الواتساب إلى {phone_number}: {e}")
+        print(f"خطأ أثناء إرسال رسالة الواتساب: {e}")
         return False
-
-def send_email_report(report_text, target_email):
-    # دي دالة الإيميل هنسبها جاهزة لو حبيت تفعلها بعدين
-    pass
