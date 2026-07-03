@@ -27,16 +27,26 @@ with tab1:
     else:
         st.error("❌ فشل الاتصال.")
 
-# --- التبويب الثاني ---
+# --- التبويب الثاني: تشغيل الـ Agent ---
 with tab2:
     st.header("📊 تشغيل الـ Agent")
-    if st.button("🚀 فحص المهام"):
+    
+    # إضافة زرار للتحديث
+    if st.button("🚀 فحص المهام المحدثة"):
+        # مسح الذاكرة المؤقتة لضمان جلب بيانات جديدة
+        st.cache_data.clear() 
+        
         config = st.session_state.get('db_config')
         if config:
+            # استدعاء الدالة لجلب البيانات
             tasks = get_overdue_tasks(config)
-            st.write(tasks)
+            
+            if tasks:
+                st.write(tasks)
+            else:
+                st.info("لا توجد مهام متأخرة حالياً.")
         else:
-            st.error("لا يوجد اتصال.")
+            st.error("لا يوجد اتصال بقاعدة البيانات.")
 
 # --- التبويب الثالث ---
 with tab3:
