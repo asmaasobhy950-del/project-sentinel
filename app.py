@@ -2,6 +2,21 @@ import streamlit as st
 import os
 from agent_core import get_overdue_tasks, generate_ai_report, add_new_task, update_task_status
 
+# 1. أول خطوة: تعريف التبويبات (هذا السطر لازم يكون قبل استخدامهم)
+tab1, tab2, tab3 = st.tabs(["🔗 الإعدادات", "📊 تشغيل الـ Agent", "➕ إدارة المهام"])
+
+# 2. الآن يمكنك استخدام كل تبويب بالترتيب
+with tab1:
+    st.header("إعدادات الاتصال")
+    # ... كود الإعدادات ...
+
+with tab2:
+    st.header("تشغيل الـ Agent")
+    # ... كود الـ Agent ...
+
+with tab3:
+    st.header("➕ إضافة مهمة جديدة")
+    # ... كود إضافة المهام ...
 # دالة أمان لقراءة البيانات
 def get_secret(key):
     return st.secrets.get(key) or os.getenv(key)
@@ -37,18 +52,4 @@ with tab3:
                     st.error("من فضلك املأ البيانات الأساسية.")
             else:
                 st.error("خطأ: لم يتم تهيئة قاعدة البيانات. تأكد من الإعدادات.")
-            # 1. لازم تعريف الـ Tabs يكون في الأول خالص
-tab1, tab2, tab3 = st.tabs(["🔗 الإعدادات", "📊 تشغيل الـ Agent", "➕ إدارة المهام"])
-
-# 2. دلوقتي تقدر تستخدم كل Tab بالترتيب
-with tab1:
-    st.header("إعدادات الاتصال")
-    # ... كود الإعدادات ...
-
-with tab2:
-    st.header("تشغيل الـ Agent")
-    # ... كود الـ Agent ...
-
-with tab3:
-    st.header("➕ إضافة مهمة جديدة")
-    # ... كود إضافة المهام اللي كتبناه سوا ...
+            
