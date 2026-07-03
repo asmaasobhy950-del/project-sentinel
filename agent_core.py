@@ -73,3 +73,21 @@ def update_task_status(db_config, task_name, new_status, new_phone=None):
     except Exception as e:
         print(f"Error updating task: {e}")
         return False
+    import psycopg2
+
+def add_new_task(db_config, task_name, assigned_to, deadline, status):
+    conn = None
+    try:
+        conn = psycopg2.connect(**db_config)
+        cur = conn.cursor()
+        # تأكد إن الجدول عندك اسمه 'tasks' والأعمدة مطابقة
+        query = "INSERT INTO tasks (task_name, assigned_to, deadline, status) VALUES (%s, %s, %s, %s)"
+        cur.execute(query, (task_name, assigned_to, deadline, status))
+        conn.commit()
+        cur.close()
+    except Exception as e:
+        print(f"Database error: {e}")
+        raise e # عشان الـ app يبين لنا الخطأ لو حصل
+    finally:
+        if conn:
+            conn.close()

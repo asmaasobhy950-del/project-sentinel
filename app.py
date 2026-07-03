@@ -1,55 +1,41 @@
 import streamlit as st
 import os
-from agent_core import get_overdue_tasks, add_new_task
+from agent_core import add_new_task, get_overdue_tasks # استدعاء الدوال المطلوبة
 
-# 1. إعداد الاتصال بشكل آمن ومعزول
-@st.cache_resource
-def get_db_connection():
+# إعداد الصفحة
+st.set_page_config(page_title="Project Sentinel", layout="wide")
+st.title("🤖 Project Sentinel")
+
+# تهيئة الاتصال (مظلة الأمان)
+if 'db_config' not in st.session_state:
     try:
-        return {
+        st.session_state['db_config'] = {
             "host": st.secrets['DB_HOST'],
             "database": st.secrets['DB_NAME'],
             "user": st.secrets['DB_USER'],
             "password": st.secrets['DB_PASS']
         }
     except:
-        return None
-
-st.set_page_config(page_title="Project Sentinel", layout="wide")
-st.title("🤖 Project Sentinel")
-
-# ربط الاتصال
-db_config = get_db_connection()
+        st.session_state['db_config'] = None
 
 tab1, tab2, tab3 = st.tabs(["🔗 الإعدادات", "📊 تشغيل الـ Agent", "➕ إدارة المهام"])
 
-with tab1:
-    if db_config:
-        st.success("✅ متصل بقاعدة البيانات")
-    else:
-        st.error("❌ فشل الاتصال (تأكد من الـ Secrets)")
-
-with tab2:
-    if st.button("🚀 فحص المهام"):
-        if db_config:
-            st.write(get_overdue_tasks(db_config))
-        else:
-            st.error("لا يوجد اتصال")
-
 with tab3:
-    with st.form("add_task_form"):
+    st.header("➕ إضافة مهمة جديدة")
+    with st.form("add_task_form", clear_on_submit=True):
         task_name = st.text_input("اسم المهمة")
         assigned_to = st.text_input("المسند إليه")
         deadline = st.date_input("تاريخ التسليم")
         submit = st.form_submit_button("إضافة المهمة")
 
     if submit:
-        # هنا التأكد الكامل قبل التنفيذ
-        if db_config and task_name and assigned_to:
+        config = st.session_state.get('db_config')
+        if config and task_name and assigned_to:
             try:
-                add_new_task(db_config, task_name, assigned_to, str(deadline))
-                st.success("✅ تمت الإضافة!")
+                # إرسال 5 قيم كاملة (db_config, name, assigned, deadline, status)
+                add_new_task(config, task_name, assigned_to, str(deadline), "In Progress")
+                st.success("✅ تمت إضافة المهمة بنجاح!")
             except Exception as e:
                 st.error(f"خطأ في قاعدة البيانات: {e}")
         else:
-            st.error("بيانات ناقصة أو لا يوجد اتصال!")
+            st.error("❌ تأكد من الاتصال ومن ملء كافة الحقول.")
