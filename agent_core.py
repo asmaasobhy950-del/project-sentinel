@@ -18,15 +18,15 @@ def get_all_tasks(db_config):
     finally:
         db_pool.putconn(conn) # إرجاع الاتصال للحوض
 
-def add_new_task(db_config, name, assigned, contact, deadline, status):
+def add_new_task(db_config, name, assigned, contact, deadline, status, company, project):
     db_pool = get_connection_pool(db_config)
     conn = db_pool.getconn()
     try:
         cur = conn.cursor()
         cur.execute("""
-            INSERT INTO tasks (task_name, assigned_to, contact_info, deadline, status)
-            VALUES (%s, %s, %s, %s, %s)
-        """, (name, assigned, contact, deadline, status))
+            INSERT INTO tasks (task_name, assigned_to, contact_info, deadline, status, company_name, project_name)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (name, assigned, contact, deadline, status, company, project))
         conn.commit()
         cur.close()
     finally:
