@@ -3,6 +3,7 @@ import pandas as pd
 import google.generativeai as genai
 import matplotlib.pyplot as plt
 from agent_core import add_new_task, get_all_tasks
+import urllib.parse
 
 # --- إعداد الصفحة ---
 st.set_page_config(page_title="Project Sentinel", layout="wide")
@@ -67,11 +68,14 @@ with tab1:
     else:
         st.info("لا توجد بيانات لعرضها حالياً.")
 
-# --- التبويب 2: تقارير Gemini ---
+# --- التبويب 2: تقارير Gemini وربط الواتساب ---
 with tab2:
-    st.header("🤖 التحليل الذكي")
-    if st.button("توليد تقرير الأداء"):
-        if not df.empty:
+    st.header("🤖 التحليل الذكي ومراسلة الفريق")
+    
+    if not df.empty:
+        # الجزء الأول: تقرير عام للمشروع
+        st.subheader("1. التقرير العام")
+        if st.button("توليد تقرير عام لكل المهام"):
             with st.spinner('جاري التحليل...'):
                 try:
                     prompt = f"قم بتحليل بيانات المهام التالية واكتب تقريراً مختصراً عن سير العمل:\n{df.to_string()}"
@@ -79,9 +83,58 @@ with tab2:
                     st.write(response.text)
                 except Exception as e:
                     st.error(f"خطأ اتصال بـ Gemini: {e}")
-        else:
-            st.warning("لا توجد بيانات لتحليلها.")
-
+        
+        st.divider() # خط فاصل
+        
+        # الجزء الثاني: تقرير مخصص لكل مهمة للواتساب
+        st.subheader("2. إرسال تحديث عبر الواتساب")
+        task_names = df['task_name'].tolist()
+        selected_task = st.selectbox("اختر المهمة لإرسال تقريرها:", task_names)
+        
+        if st.button("تجهيز رسالة الواتساب"):
+            with st.spinner('جاري صياغة الرسالة...'):
+                # استخراج بيانات المهمة المحددة
+                task_data = df[df['task_name'] == selected_task].iloc[0]
+                phone = str(task_data.get('contact_info', '')).replace('+', '').strip()
+                
+                if phone and phone != 'None' and phone != 'nan':
+                    try:
+                        # طلب من جيميناي صياغة رسالة واتساب
+                        prompt = f"""
+                        اكتب رسالة واتساب قصيرة ومهنية باللغة العربية للموظف (المسند إليه: {task_data['assigned_to']}) 
+                        لتحديثه بحالة المهمة التالية:
+                        اسم المهمة: {task_data['task_name']}
+                        الحالة: {task_data['status']}
+                        تاريخ التسليم: {task_data['deadline']}
+                        اجعل الرسالة ودية ومناسبة للعمل.
+                        """
+                        response = model.generate_content(prompt)
+                        whatsapp_msg = response.text
+                        
+                        st.write("📝 **الرسالة المقترحة:**")
+                        st.info(whatsapp_msg)
+                        
+                        # تحويل النص لصيغة يقبلها رابط الويب (URL Encoding)
+                        encoded_msg = urllib.parse.quote(whatsapp_msg)
+                        wa_link = f"https://wa.me/{phone}?text={encoded_msg}"
+                        
+                        # إنشاء زرار واتساب احترافي
+                        st.markdown(
+                            f"""
+                            <a href="{wa_link}" target="_blank" 
+                               style="background-color:#25D366; color:white; padding:10px 20px; 
+                               text-decoration:none; border-radius:5px; font-weight:bold; display:inline-block; margin-top:10px;">
+                               💬 إرسال التقرير عبر الواتساب
+                            </a>
+                            """, 
+                            unsafe_allow_html=True
+                        )
+                    except Exception as e:
+                        st.error(f"خطأ أثناء تجهيز الرسالة: {e}")
+                else:
+                    st.error("⚠️ لا يوجد رقم هاتف صالح مسجل لهذه المهمة. يرجى تعديل معلومات التواصل.")
+    else:
+        st.warning("لا توجد بيانات لتحليلها.")
 # --- التبويب 3: إضافة المهام ---
 with tab3:
     st.header("➕ إضافة مهمة جديدة")
