@@ -74,7 +74,7 @@ with tab2:
     
     if not df.empty:
         # الجزء الأول: تقرير عام للمشروع
-        st.subheader("1. التقرير العام")
+        st.subheader("1. التقرير العام للإدارة")
         if st.button("توليد تقرير عام لكل المهام"):
             with st.spinner('جاري التحليل...'):
                 try:
@@ -84,55 +84,58 @@ with tab2:
                 except Exception as e:
                     st.error(f"خطأ اتصال بـ Gemini: {e}")
         
-        st.divider() # خط فاصل
+        st.divider()
         
-        # الجزء الثاني: تقرير مخصص لكل مهمة للواتساب
-        st.subheader("2. إرسال تحديث عبر الواتساب")
-        task_names = df['task_name'].tolist()
-        selected_task = st.selectbox("اختر المهمة لإرسال تقريرها:", task_names)
+        # الجزء الثاني: التقرير الصباحي المجمع (تحديث يومي للموظفين)
+        st.subheader("☀️ 2. رسائل الصباح المجمعة للفريق")
+        st.write("اضغطي على الزر لتجميع المهام (غير المكتملة) لكل موظف وتجهيز رسائل الواتساب.")
         
-        if st.button("تجهيز رسالة الواتساب"):
-            with st.spinner('جاري صياغة الرسالة...'):
-                # استخراج بيانات المهمة المحددة
-                task_data = df[df['task_name'] == selected_task].iloc[0]
-                phone = str(task_data.get('contact_info', '')).replace('+', '').strip()
+        if st.button("تجهيز رسائل الصباح"):
+            # استبعاد المهام المكتملة (Done) عشان منبعتهاش كل يوم
+            pending_tasks = df[df['status'] != 'Done']
+            
+            if not pending_tasks.empty:
+                # تجميع البيانات حسب الموظف ورقم التليفون
+                grouped_tasks = pending_tasks.groupby(['assigned_to', 'contact_info'])
                 
-                if phone and phone != 'None' and phone != 'nan':
-                    try:
-                        # طلب من جيميناي صياغة رسالة واتساب
-                        prompt = f"""
-                        اكتب رسالة واتساب قصيرة ومهنية باللغة العربية للموظف (المسند إليه: {task_data['assigned_to']}) 
-                        لتحديثه بحالة المهمة التالية:
-                        اسم المهمة: {task_data['task_name']}
-                        الحالة: {task_data['status']}
-                        تاريخ التسليم: {task_data['deadline']}
-                        اجعل الرسالة ودية ومناسبة للعمل.
-                        """
-                        response = model.generate_content(prompt)
-                        whatsapp_msg = response.text
+                st.write("---")
+                # المرور على كل موظف وتجهيز رسالته
+                for (assigned, phone_num), person_tasks in grouped_tasks:
+                    phone = str(phone_num).replace('+', '').strip()
+                    
+                    if phone and phone != 'None' and phone != 'nan':
+                        # تجميع المهام في نص واحد
+                        tasks_list_text = ""
+                        for _, row in person_tasks.iterrows():
+                            tasks_list_text += f"🔸 {row['task_name']} | ⏳ التسليم: {row['deadline']}\n"
                         
-                        st.write("📝 **الرسالة المقترحة:**")
-                        st.info(whatsapp_msg)
+                        # صياغة الرسالة الصباحية
+                        morning_msg = f"صباح الخير يا {assigned} ☀️\n\nدي قائمة بمهامك الحالية اللي محتاجة متابعة اليوم:\n\n{tasks_list_text}\nبالتوفيق في إنجازها! 🚀"
                         
-                        # تحويل النص لصيغة يقبلها رابط الويب (URL Encoding)
-                        encoded_msg = urllib.parse.quote(whatsapp_msg)
+                        # تشفير الرابط
+                        encoded_msg = urllib.parse.quote(morning_msg)
                         wa_link = f"https://wa.me/{phone}?text={encoded_msg}"
                         
-                        # إنشاء زرار واتساب احترافي
-                        st.markdown(
-                            f"""
-                            <a href="{wa_link}" target="_blank" 
-                               style="background-color:#25D366; color:white; padding:10px 20px; 
-                               text-decoration:none; border-radius:5px; font-weight:bold; display:inline-block; margin-top:10px;">
-                               💬 إرسال التقرير عبر الواتساب
-                            </a>
-                            """, 
-                            unsafe_allow_html=True
-                        )
-                    except Exception as e:
-                        st.error(f"خطأ أثناء تجهيز الرسالة: {e}")
-                else:
-                    st.error("⚠️ لا يوجد رقم هاتف صالح مسجل لهذه المهمة. يرجى تعديل معلومات التواصل.")
+                        # عرض الموظف وزر الإرسال الخاص به
+                        col_a, col_b = st.columns([3, 1])
+                        with col_a:
+                            st.markdown(f"**👤 {assigned}** (لديه {len(person_tasks)} مهام غير مكتملة)")
+                        with col_b:
+                            st.markdown(
+                                f"""
+                                <a href="{wa_link}" target="_blank" 
+                                   style="background-color:#25D366; color:white; padding:8px 15px; 
+                                   text-decoration:none; border-radius:5px; font-size:14px; font-weight:bold; display:inline-block;">
+                                   💬 إرسال للموظف
+                                </a>
+                                """, 
+                                unsafe_allow_html=True
+                            )
+                        st.write("") # مسافة صغيرة بين كل موظف والتاني
+                    else:
+                        st.warning(f"⚠️ الموظف {assigned} ليس لديه رقم هاتف مسجل.")
+            else:
+                st.success("🎉 كل المهام الحالية مكتملة (Done)! لا يوجد رسائل صباحية اليوم.")
     else:
         st.warning("لا توجد بيانات لتحليلها.")
 # --- التبويب 3: إضافة المهام ---
