@@ -1,69 +1,39 @@
 import streamlit as st
-from agent_core import add_new_task, get_overdue_tasks
+import pandas as pd
+import google.generativeai as genai
+from agent_core import get_all_tasks, add_new_task
 
-st.set_page_config(page_title="Project Sentinel", layout="wide")
-st.title("🤖 Project Sentinel")
+# إعداد Gemini
+genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
-# تهيئة الاتصال
-if 'db_config' not in st.session_state:
-    try:
-        st.session_state['db_config'] = {
-            "host": st.secrets['DB_HOST'],
-            "database": st.secrets['DB_NAME'],
-            "user": st.secrets['DB_USER'],
-            "password": st.secrets['DB_PASS']
-        }
-    except:
-        st.session_state['db_config'] = None
+st.set_page_config(page_title="Sentinel Dashboard", layout="wide")
+tab1, tab2, tab3 = st.tabs(["📊 الداشبورد", "🤖 تقارير Gemini", "➕ إضافة مهام"])
 
-# تعريف التبويبات مرة واحدة في بداية الصفحة
-tab1, tab2, tab3 = st.tabs(["🔗 الإعدادات", "📊 تشغيل الـ Agent", "➕ إدارة المهام"])
+# جلب البيانات
+tasks_df = get_all_tasks(st.session_state['db_config'])
 
-# --- التبويب الأول ---
 with tab1:
-    st.header("إعدادات الاتصال")
-    if st.session_state.get('db_config'):
-        st.success("✅ متصل بقاعدة البيانات بنجاح!")
-    else:
-        st.error("❌ فشل الاتصال.")
+    st.header("إحصائيات المهام")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("إجمالي المهام", len(tasks_df))
+    col2.metric("مهام قيد التنفيذ", len(tasks_df[tasks_df['status'] == 'In Progress']))
+    st.dataframe(tasks_df) # عرض كل البيانات بالـ status والكونتكت
 
-# --- التبويب الثاني: تشغيل الـ Agent ---
 with tab2:
-    st.header("📊 تشغيل الـ Agent")
-    
-    # إضافة زرار للتحديث
-    if st.button("🚀 فحص المهام المحدثة"):
-        # مسح الذاكرة المؤقتة لضمان جلب بيانات جديدة
-        st.cache_data.clear() 
-        
-        config = st.session_state.get('db_config')
-        if config:
-            # استدعاء الدالة لجلب البيانات
-            tasks = get_overdue_tasks(config)
-            
-            if tasks:
-                st.write(tasks)
-            else:
-                st.info("لا توجد مهام متأخرة حالياً.")
-        else:
-            st.error("لا يوجد اتصال بقاعدة البيانات.")
+    st.header("التحليل الذكي للمهام")
+    if st.button("توليد تقرير ذكي"):
+        prompt = f"حلل هذه المهام واكتب تقرير أداء: {tasks_df.to_string()}"
+        model = genai.GenerativeModel('gemini-pro')
+        response = model.generate_content(prompt)
+        st.write(response.text)
 
-# --- التبويب الثالث ---
 with tab3:
-    st.header("➕ إضافة مهمة جديدة")
-    with st.form("add_task_form", clear_on_submit=True):
-        task_name = st.text_input("اسم المهمة")
-        assigned_to = st.text_input("المسند إليه")
-        deadline = st.date_input("تاريخ التسليم")
-        submit = st.form_submit_button("إضافة المهمة")
-
-    if submit:
-        config = st.session_state.get('db_config')
-        if config and task_name and assigned_to:
-            try:
-                add_new_task(config, task_name, assigned_to, str(deadline), "In Progress")
-                st.success("✅ تمت إضافة المهمة بنجاح!")
-            except Exception as e:
-                st.error(f"خطأ: {e}")
-        else:
-            st.warning("⚠️ يرجى ملء البيانات.")
+    st.header("إضافة مهمة مع كافة التفاصيل")
+    with st.form("new_task"):
+        # إضافة حقول جديدة
+        status = st.selectbox("الحالة", ["Pending", "In Progress", "Done"])
+        contact = st.text_input("معلومات التواصل")
+        # ... باقي الحقول (الاسم، الشخص، التاريخ)
+        if st.form_submit_button("إضافة"):
+            # استدعاء الدالة مع الـ status والـ contact
+            add_new_task(..., status, contact)

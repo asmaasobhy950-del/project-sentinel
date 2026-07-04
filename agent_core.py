@@ -91,3 +91,7 @@ def add_new_task(db_config, task_name, assigned_to, deadline, status):
     finally:
         if conn:
             conn.close()
+def get_all_tasks(db_config):
+    # استعلام لجلب كل البيانات
+    query = "SELECT task_name, assigned_to, deadline, status, contact_info FROM tasks"
+    # ... تنفيذ الاستعلام وإرجاع النتيجة كـ Pandas DataFrame
