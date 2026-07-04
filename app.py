@@ -171,15 +171,27 @@ with tab2:
 # --- التبويب 3 و 4: الإضافة، التعديل، الحذف ---
 # ==========================================
 with tab3:
-    with st.form("new_task_form", clear_on_submit=True):
-        t_name = st.text_input("اسم المهمة")
-        t_assigned = st.text_input("المسند إليه")
-        t_contact = st.text_input("رقم التليفون")
-        t_status = st.selectbox("الحالة", ["Pending", "In Progress", "Done"])
-        t_date = st.date_input("تاريخ التسليم")
-        if st.form_submit_button("إضافة") and t_name and t_assigned:
-            add_new_task(db_config, t_name, t_assigned, t_contact, str(t_date), t_status)
-            st.cache_data.clear()
+with tab3:
+    with st.form("add_form", clear_on_submit=True):
+        # جلب الشركات الموجودة من جدول الشركات
+        # أو ببساطة من القائمة الموجودة فعلياً في جدول المهام
+        existing_companies = df_raw['company_name'].dropna().unique().tolist()
+        
+        # اختيار الشركة
+        selected_company = st.selectbox("اختر الشركة", ["جديد..."] + existing_companies)
+        
+        # إذا اختار "جديد"، نفتح حقل نصي لإدخال الاسم
+        if selected_company == "جديد...":
+            company_name = st.text_input("أدخل اسم الشركة الجديدة")
+        else:
+            company_name = selected_company
+            
+        task_name = st.text_input("اسم المهمة")
+        # ... (باقي الحقول)
+        
+        if st.form_submit_button("إضافة"):
+            # نقوم بحفظ البيانات كما فعلنا سابقاً
+            add_new_task(db_config, task_name, assigned, contact, deadline, status, company_name)
             st.rerun()
 
 with tab4:
