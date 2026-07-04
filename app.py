@@ -15,16 +15,26 @@ def check_password():
     pwd = st.text_input("كلمة المرور", type="password")
     if st.button("دخول"):
         if pwd == st.secrets.get("APP_PASS", "admin123"):
-            st.session_state["password_correct"] = True; st.rerun()
-        else: st.error("كلمة مرور خاطئة")
+            st.session_state["password_correct"] = True
+            st.rerun()
+        else:
+            st.error("كلمة مرور خاطئة")
     return False
 
 if not check_password(): st.stop()
 
 # إعدادات قاعدة البيانات والذكاء الاصطناعي
-db_config = {"host": st.secrets["DB_HOST"], "database": st.secrets["DB_NAME"], "user": st.secrets["DB_USER"], "password": st.secrets["DB_PASS"]}
-init_db(db_config) 
-genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+db_config = {
+    "host": st.secrets.get("DB_HOST"),
+    "database": st.secrets.get("DB_NAME"),
+    "user": st.secrets.get("DB_USER"),
+    "password": st.secrets.get("DB_PASS")
+}
+
+# تهيئة الجداول في قاعدة البيانات
+init_db(db_config)
+
+genai.configure(api_key=st.secrets.get("GEMINI_API_KEY"))
 model = genai.GenerativeModel('gemini-1.5-flash')
 
 # تحميل البيانات
@@ -32,8 +42,11 @@ df_raw = get_all_tasks(db_config)
 
 # الفلاتر الجانبية
 st.sidebar.header("🔍 فلاتر")
-status_filter = st.sidebar.multiselect("الحالة", options=df_raw['status'].unique() if not df_raw.empty else [], default=df_raw['status'].unique() if not df_raw.empty else [], key="f1")
-df = df_raw[df_raw['status'].isin(status_filter)] if not df_raw.empty else df_raw
+if not df_raw.empty:
+    status_filter = st.sidebar.multiselect("الحالة", options=df_raw['status'].unique(), default=df_raw['status'].unique(), key="f1")
+    df = df_raw[df_raw['status'].isin(status_filter)]
+else:
+    df = df_raw
 
 # التبويبات
 tab1, tab2, tab3, tab4 = st.tabs(["📊 الداشبورد", "🤖 تقارير", "➕ إضافة مهام", "📜 سجل التغييرات"])
@@ -48,7 +61,7 @@ with tab2:
 
 with tab3:
     st.subheader("➕ إضافة مهمة جديدة")
-    with st.form("add_task", clear_on_submit=True):
+    with st.form("add_task_form", clear_on_submit=True):
         col1, col2 = st.columns(2)
         with col1:
             proj = st.text_input("اسم المشروع")
@@ -61,16 +74,21 @@ with tab3:
         
         if st.form_submit_button("إضافة المهمة"):
             if proj and task and assigned:
+                # ملاحظة: دالة add_new_task في agent_core يجب أن تدعم project_name
                 add_new_task(db_config, proj, task, assigned, contact, str(deadline), status)
-                st.success("✅ تم إضافة المهمة بنجاح!")
+                st.success("✅ تمت الإضافة!")
                 st.rerun()
             else:
-                st.error("⚠️ يرجى ملء الحقول الأساسية")
+                st.error("⚠️ يرجى ملء الحقول المطلوبة")
 
 with tab4:
     st.subheader("📜 سجل العمليات")
     if st.button("🗑️ مسح سجل التغييرات نهائياً"):
         clear_audit_logs(db_config)
         st.rerun()
+    
     logs = get_audit_logs(db_config)
-    st.dataframe(logs, use_container_width=True)
+    if not logs.empty:
+        st.dataframe(logs, use_container_width=True)
+    else:
+        st.info("لا توجد سجلات حالياً.")
