@@ -4,28 +4,31 @@ import google.generativeai as genai
 import matplotlib.pyplot as plt
 from agent_core import add_new_task, get_all_tasks
 
+# تهيئة الصفحة
 st.set_page_config(page_title="Project Sentinel", layout="wide")
 st.title("🤖 Project Sentinel: لوحة تحكم الوكيل الذكي")
 
-# 1. تهيئة Gemini بشكل أكثر قوة
+# تهيئة Gemini بأمان
 try:
-    api_key = st.secrets.get("GEMINI_API_KEY")
-    genai.configure(api_key=api_key)
-    # استخدام الموديل الأكثر استقراراً حالياً
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+    model = genai.GenerativeModel('gemini-pro') # استخدام الموديل المستقر
 except Exception as e:
     st.error(f"خطأ في تهيئة Gemini: {e}")
 
-# جلب البيانات
+# جلب الإعدادات بأمان (بدون KeyError)
 db_config = {
-    "host": st.secrets.get("DB_HOST"), "database": st.secrets.get("DB_NAME"),
-    "user": st.secrets.get("DB_USER"), "password": st.secrets.get("DB_PASS")
+    "host": st.secrets.get("DB_HOST"),
+    "database": st.secrets.get("DB_NAME"),
+    "user": st.secrets.get("DB_USER"),
+    "password": st.secrets.get("DB_PASS")
 }
 
+# جلب البيانات وعرضها
 try:
     df = get_all_tasks(db_config)
-except:
-    df = pd.DataFrame()
+    st.dataframe(df)
+except Exception as e:
+    st.write("لا يمكن عرض البيانات حالياً.")
 
 # 2. التبويبات
 tab1, tab2, tab3 = st.tabs(["📊 الداشبورد", "🤖 تقارير Gemini", "➕ إضافة مهام"])
