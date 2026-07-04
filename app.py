@@ -3,7 +3,7 @@ import pandas as pd
 import google.generativeai as genai
 import plotly.express as px
 import urllib.parse
-from agent_core import add_new_task, get_all_tasks, delete_task, update_task
+from agent_core import add_new_task, get_all_tasks, delete_task, update_task, get_audit_logs
 
 # --- إعداد الصفحة ---
 st.set_page_config(page_title="Project Sentinel", layout="wide", page_icon="🤖")

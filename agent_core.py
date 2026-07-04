@@ -57,3 +57,13 @@ def delete_task(db_config, task_name):
         cur.close()
     finally:
         db_pool.putconn(conn)
+def get_audit_logs(db_config):
+    db_pool = get_connection_pool(db_config)
+    conn = db_pool.getconn()
+    try:
+        # تأكد من أن جدول audit_logs موجود في قاعدة البيانات
+        return pd.read_sql("SELECT * FROM audit_logs ORDER BY action_time DESC LIMIT 50", conn)
+    except:
+        return pd.DataFrame() # إرجاع جدول فارغ إذا لم يوجد السجل
+    finally:
+        db_pool.putconn(conn)
