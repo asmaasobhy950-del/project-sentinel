@@ -1,41 +1,59 @@
 import psycopg2
+from psycopg2 import pool
 import pandas as pd
+import streamlit as st
 
+# إنشاء Pool للاتصالات وتخزينه في الكاش لتجنب إنشائه مراراً
+@st.cache_resource
+def get_connection_pool(db_config):
+    return psycopg2.pool.SimpleConnectionPool(1, 10, **db_config)
 
 def get_all_tasks(db_config):
-    conn = psycopg2.connect(**db_config)
-    # جلب كافة الأعمدة التي تظهر في جدولك
-    query = "SELECT task_name, assigned_to, contact_info, deadline, status FROM tasks"
-    df = pd.read_sql(query, conn)
-    conn.close()
-    return df
+    db_pool = get_connection_pool(db_config)
+    conn = db_pool.getconn()
+    try:
+        query = "SELECT * FROM tasks"
+        df = pd.read_sql(query, conn)
+        return df
+    finally:
+        db_pool.putconn(conn) # إرجاع الاتصال للحوض
 
-def add_new_task(db_config, task_name, assigned_to, contact_info, deadline, status):
-    conn = psycopg2.connect(**db_config)
-    cur = conn.cursor()
-    query = """INSERT INTO tasks (task_name, assigned_to, contact_info, deadline, status) 
-               VALUES (%s, %s, %s, %s, %s)"""
-    cur.execute(query, (task_name, assigned_to, contact_info, deadline, status))
-    conn.commit()
-    cur.close()
-    conn.close()
-def delete_task(db_config, task_name):
-    conn = psycopg2.connect(**db_config)
-    cur = conn.cursor()
-    # تأكدي إن اسم الجدول عندك هو tasks
-    cur.execute("DELETE FROM tasks WHERE task_name = %s", (task_name,))
-    conn.commit()
-    cur.close()
-    conn.close()
+def add_new_task(db_config, name, assigned, contact, deadline, status):
+    db_pool = get_connection_pool(db_config)
+    conn = db_pool.getconn()
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO tasks (task_name, assigned_to, contact_info, deadline, status)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (name, assigned, contact, deadline, status))
+        conn.commit()
+        cur.close()
+    finally:
+        db_pool.putconn(conn)
 
 def update_task(db_config, old_task_name, new_name, assigned, contact, deadline, status):
-    conn = psycopg2.connect(**db_config)
-    cur = conn.cursor()
-    cur.execute("""
-        UPDATE tasks 
-        SET task_name = %s, assigned_to = %s, contact_info = %s, deadline = %s, status = %s
-        WHERE task_name = %s
-    """, (new_name, assigned, contact, deadline, status, old_task_name))
-    conn.commit()
-    cur.close()
-    conn.close()
+    db_pool = get_connection_pool(db_config)
+    conn = db_pool.getconn()
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            UPDATE tasks 
+            SET task_name = %s, assigned_to = %s, contact_info = %s, deadline = %s, status = %s
+            WHERE task_name = %s
+        """, (new_name, assigned, contact, deadline, status, old_task_name))
+        conn.commit()
+        cur.close()
+    finally:
+        db_pool.putconn(conn)
+
+def delete_task(db_config, task_name):
+    db_pool = get_connection_pool(db_config)
+    conn = db_pool.getconn()
+    try:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM tasks WHERE task_name = %s", (task_name,))
+        conn.commit()
+        cur.close()
+    finally:
+        db_pool.putconn(conn)
