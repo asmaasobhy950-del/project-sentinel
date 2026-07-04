@@ -98,3 +98,14 @@ def delete_task(db_config, task_name):
         db_pool.putconn(conn)تقرير بنجاح.")
     else:
         print("لا توجد مهام معلقة اليوم.")
+def get_audit_logs(db_config):
+    db_pool = get_connection_pool(db_config)
+    conn = db_pool.getconn()
+    try:
+        # تأكد أن الجدول موجود في قاعدة البيانات
+        query = "SELECT * FROM audit_logs ORDER BY action_time DESC LIMIT 50"
+        return pd.read_sql(query, conn)
+    except:
+        return pd.DataFrame() # إرجاع DataFrame فارغ إذا لم يوجد الجدول
+    finally:
+        db_pool.putconn(conn)
