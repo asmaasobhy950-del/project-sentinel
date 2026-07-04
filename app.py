@@ -203,12 +203,13 @@ with tab4:
                 delete_task(db_config, selected_task)
                 st.cache_data.clear()
                 st.rerun()
+           
             st.subheader("📜 سجل العمليات الأخير")
-    logs = get_audit_logs(db_config)
-    if not logs.empty:
-        st.dataframe(logs, use_container_width=True)
-    else:
-        st.info("لا توجد عمليات مسجلة بعد.") 
+            logs = get_audit_logs(db_config)
+            if not logs.empty:
+             st.dataframe(logs, use_container_width=True)
+            else:
+              st.info("لا توجد سجلات بعد.") 
             
 
                
