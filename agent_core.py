@@ -12,17 +12,17 @@ def log_action(db_pool, action_type, task_name, details):
     conn = db_pool.getconn()
     try:
         cur = conn.cursor()
+        # إضافة أمر إنشاء الجدول إذا لم يكن موجوداً
         cur.execute("""
             CREATE TABLE IF NOT EXISTS audit_logs (
-                id SERIAL PRIMARY KEY, 
-                action_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
-                action_type TEXT, 
-                task_name TEXT, 
+                id SERIAL PRIMARY KEY,
+                action_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                action_type TEXT,
+                task_name TEXT,
                 details TEXT
             )
         """)
-        cur.execute("INSERT INTO audit_logs (action_type, task_name, details) VALUES (%s, %s, %s)", 
-                    (action_type, task_name, details))
+        cur.execute("INSERT INTO audit_logs (action_type, task_name, details) VALUES (%s, %s, %s)", (action_type, task_name, details))
         conn.commit()
         cur.close()
     finally:
@@ -40,6 +40,10 @@ def get_audit_logs(db_config):
     db_pool = get_connection_pool(db_config)
     conn = db_pool.getconn()
     try:
+        # التأكد من وجود الجدول قبل الاستعلام
+        cur = conn.cursor()
+        cur.execute("CREATE TABLE IF NOT EXISTS audit_logs (id SERIAL PRIMARY KEY, action_time TIMESTAMP, action_type TEXT, task_name TEXT, details TEXT)")
+        conn.commit()
         return pd.read_sql("SELECT * FROM audit_logs ORDER BY action_time DESC LIMIT 50", conn)
     finally:
         db_pool.putconn(conn)
