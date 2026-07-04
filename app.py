@@ -1,56 +1,56 @@
 import streamlit as st
+import pandas as pd
+import google.generativeai as genai
 from agent_core import add_new_task, get_all_tasks
 
-# 1. إعدادات الصفحة
 st.set_page_config(page_title="Project Sentinel", layout="wide", page_icon="🤖")
 st.title("🤖 Project Sentinel: لوحة تحكم الوكيل الذكي")
 
-# 2. تهيئة الاتصال بقاعدة البيانات بشكل آمن
+# تهيئة الاتصال الآمن
 if 'db_config' not in st.session_state:
     try:
         st.session_state['db_config'] = {
-            "host": st.secrets['DB_HOST'],
-            "database": st.secrets['DB_NAME'],
-            "user": st.secrets['DB_USER'],
-            "password": st.secrets['DB_PASS']
+            "host": st.secrets['DB_HOST'], "database": st.secrets['DB_NAME'],
+            "user": st.secrets['DB_USER'], "password": st.secrets['DB_PASS']
         }
-    except Exception:
-        st.session_state['db_config'] = None
+    except: st.session_state['db_config'] = None
 
-# 3. التبويبات
+# إعداد Gemini
+genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+
 tab1, tab2, tab3 = st.tabs(["📊 الداشبورد", "🤖 تقارير Gemini", "➕ إضافة مهام"])
 
 # --- التبويب 1: الداشبورد ---
 with tab1:
-    st.header("📊 عرض قاعدة البيانات")
+    st.header("📊 حالة المهام")
     if st.session_state.get('db_config'):
-        try:
-            tasks_df = get_all_tasks(st.session_state['db_config'])
-            st.dataframe(tasks_df) # عرض البيانات
-        except Exception as e:
-            st.error(f"خطأ في جلب البيانات: {e}")
-    else:
-        st.error("لم يتم الاتصال بقاعدة البيانات.")
+        df = get_all_tasks(st.session_state['db_config'])
+        st.dataframe(df) # عرض الجدول
+        # إحصائيات بسيطة
+        st.metric("إجمالي المهام", len(df))
+    else: st.error("فشل الاتصال بقاعدة البيانات.")
 
-# --- التبويب 3: إضافة مهام (الاستدعاء الآمن) ---
+# --- التبويب 2: Gemini ---
+with tab2:
+    st.header("🤖 التحليل الذكي")
+    if st.button("توليد تقرير الأداء"):
+        df = get_all_tasks(st.session_state['db_config'])
+        model = genai.GenerativeModel('gemini-pro')
+        response = model.generate_content(f"حلل أداء المهام التالية: {df.to_string()}")
+        st.write(response.text)
+
+# --- التبويب 3: إضافة المهام ---
 with tab3:
-    st.header("➕ إضافة مهمة جديدة")
-    with st.form("new_task_form", clear_on_submit=True):
-        task_name = st.text_input("اسم المهمة")
-        assigned_to = st.text_input("المسند إليه")
-        contact_info = st.text_input("معلومات التواصل")
+    with st.form("new_task"):
+        name = st.text_input("اسم المهمة")
+        assigned = st.text_input("المسند إليه")
+        contact = st.text_input("معلومات التواصل")
         status = st.selectbox("الحالة", ["Pending", "In Progress", "Done"])
-        deadline = st.date_input("تاريخ التسليم")
+        date = st.date_input("تاريخ التسليم")
         submit = st.form_submit_button("إضافة")
 
-    # الاستدعاء الصحيح: داخل الشرط فقط
     if submit:
-        config = st.session_state.get('db_config')
-        if config and task_name and assigned_to:
-            try:
-                add_new_task(config, task_name, assigned_to, str(deadline), status, contact_info)
-                st.success("✅ تمت إضافة المهمة!")
-            except Exception as e:
-                st.error(f"خطأ: {e}")
-        else:
-            st.warning("⚠️ يرجى ملء كافة البيانات.")
+        try:
+            add_new_task(st.session_state['db_config'], name, assigned, contact, str(date), status)
+            st.success("✅ تمت الإضافة!")
+        except Exception as e: st.error(f"خطأ: {e}")
