@@ -203,14 +203,12 @@ with tab4:
                 delete_task(db_config, selected_task)
                 st.cache_data.clear()
                 st.rerun()
-# في قائمة التبويبات أضيفي:
-tab1, tab2, tab3, tab4 = st.tabs(["📊 الداشبورد", "🤖 التقارير", "⚙️ الإدارة", "📜 سجل التغييرات"])
-
-# داخل التبويب الرابع:
-with tab4:
-    st.subheader("📜 سجل العمليات الأخير")
+            st.subheader("📜 سجل العمليات الأخير")
     logs = get_audit_logs(db_config)
     if not logs.empty:
         st.dataframe(logs, use_container_width=True)
     else:
-        st.info("لا توجد عمليات مسجلة بعد.")                
+        st.info("لا توجد عمليات مسجلة بعد.") 
+            
+
+               
