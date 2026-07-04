@@ -173,7 +173,6 @@ with tab2:
 with tab3:
     with st.form("new_task_form", clear_on_submit=True):
         t_name = st.text_input("اسم المهمة")
-        proj = st.text_input("اسم المشروع")
         t_assigned = st.text_input("المسند إليه")
         t_contact = st.text_input("رقم التليفون")
         t_status = st.selectbox("الحالة", ["Pending", "In Progress", "Done"])
@@ -204,9 +203,3 @@ with tab4:
                 delete_task(db_config, selected_task)
                 st.cache_data.clear()
                 st.rerun()
-
-    with tab4:
-        if st.button("مسح السجلات"):
-            clear_audit_logs(db_config)
-            st.rerun()
-            st.dataframe(get_audit_logs(db_config))
