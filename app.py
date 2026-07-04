@@ -4,18 +4,20 @@ import google.generativeai as genai
 import matplotlib.pyplot as plt
 from agent_core import add_new_task, get_all_tasks
 
-# تهيئة الصفحة
+# --- إعداد الصفحة ---
 st.set_page_config(page_title="Project Sentinel", layout="wide")
 st.title("🤖 Project Sentinel: لوحة تحكم الوكيل الذكي")
 
-# تهيئة Gemini بأمان
+# --- 1. تهيئة Gemini ---
 try:
-    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-    model = genai.GenerativeModel('gemini-pro') # استخدام الموديل المستقر
+    api_key = st.secrets.get("GEMINI_API_KEY")
+    genai.configure(api_key=api_key)
+    # التحديث للإصدار المطلوب
+    model = genai.GenerativeModel('gemini-2.5-flash')
 except Exception as e:
     st.error(f"خطأ في تهيئة Gemini: {e}")
 
-# جلب الإعدادات بأمان (بدون KeyError)
+# --- 2. إعداد قاعدة البيانات بأمان ---
 db_config = {
     "host": st.secrets.get("DB_HOST"),
     "database": st.secrets.get("DB_NAME"),
@@ -23,56 +25,81 @@ db_config = {
     "password": st.secrets.get("DB_PASS")
 }
 
-# جلب البيانات وعرضها
+# --- 3. جلب البيانات ---
 try:
     df = get_all_tasks(db_config)
-    st.dataframe(df)
 except Exception as e:
-    st.write("لا يمكن عرض البيانات حالياً.")
+    df = pd.DataFrame()
+    st.error(f"خطأ في جلب البيانات: {e}")
 
-# 2. التبويبات
+# إنشاء التبويبات
 tab1, tab2, tab3 = st.tabs(["📊 الداشبورد", "🤖 تقارير Gemini", "➕ إضافة مهام"])
 
+# --- التبويب 1: الداشبورد ---
 with tab1:
     st.header("📊 حالة المهام")
     if not df.empty:
         col1, col2 = st.columns([1, 2])
+        
+        # الرسم البياني
         with col1:
+            st.subheader("توزيع الحالات")
             fig, ax = plt.subplots()
-            df['status'].value_counts().plot(kind='pie', ax=ax, autopct='%1.1f%%')
+            df['status'].value_counts().plot(kind='pie', ax=ax, autopct='%1.1f%%', startangle=90)
+            ax.set_ylabel('') # لتنظيف شكل الرسمة
             st.pyplot(fig)
+            
+        # جدول البيانات ورابط الواتس
         with col2:
-            st.dataframe(df)
+            st.subheader("جدول المهام")
+            
+            # دالة لتوليد رابط الواتس وتجنب أخطاء الأرقام الفارغة (NULL)
+            def generate_wa_link(row):
+                contact = str(row.get('contact_info', ''))
+                if contact == 'None' or contact.strip() == '':
+                    return "لا يوجد رقم"
+                # إزالة علامة + إذا كانت موجودة ليعمل الرابط بشكل صحيح
+                clean_contact = contact.replace('+', '')
+                return f"https://wa.me/{clean_contact}?text=تنبيه: بخصوص مهمة {row.get('task_name', '')}"
+            
+            df['واتساب'] = df.apply(generate_wa_link, axis=1)
+            st.dataframe(df, use_container_width=True)
     else:
-        st.info("لا توجد بيانات.")
+        st.info("لا توجد بيانات لعرضها حالياً.")
 
+# --- التبويب 2: تقارير Gemini ---
 with tab2:
     st.header("🤖 التحليل الذكي")
     if st.button("توليد تقرير الأداء"):
         if not df.empty:
-            with st.spinner('جاري التحليل عبر Gemini...'):
+            with st.spinner('جاري التحليل...'):
                 try:
-                    # تعديل طريقة الطلب لضمان التوافق
-                    response = model.generate_content(f"قم بتحليل البيانات التالية وتقديم تقرير أداء مختصر:\n{df.to_string()}")
+                    prompt = f"قم بتحليل بيانات المهام التالية واكتب تقريراً مختصراً عن سير العمل:\n{df.to_string()}"
+                    response = model.generate_content(prompt)
                     st.write(response.text)
                 except Exception as e:
-                    st.error(f"خطأ اتصال Gemini: {e}. يرجى التأكد من أن الـ API Key مفعل.")
+                    st.error(f"خطأ اتصال بـ Gemini: {e}")
         else:
-            st.warning("لا توجد بيانات للتحليل.")
+            st.warning("لا توجد بيانات لتحليلها.")
 
+# --- التبويب 3: إضافة المهام ---
 with tab3:
+    st.header("➕ إضافة مهمة جديدة")
     with st.form("new_task_form", clear_on_submit=True):
-        task_name = st.text_input("اسم المهمة")
-        assigned_to = st.text_input("المسند إليه")
-        contact_info = st.text_input("معلومات التواصل")
-        status = st.selectbox("الحالة", ["Pending", "In Progress", "Done"])
-        deadline = st.date_input("تاريخ التسليم")
+        t_name = st.text_input("اسم المهمة")
+        t_assigned = st.text_input("المسند إليه")
+        t_contact = st.text_input("معلومات التواصل (رقم التليفون)")
+        t_status = st.selectbox("الحالة", ["Pending", "In Progress", "Done"])
+        t_date = st.date_input("تاريخ التسليم")
         submit = st.form_submit_button("إضافة المهمة")
 
     if submit:
-        try:
-            add_new_task(db_config, task_name, assigned_to, contact_info, str(deadline), status)
-            st.success("✅ تمت الإضافة!")
-            st.rerun()
-        except Exception as e:
-            st.error(f"خطأ: {e}")
+        if t_name and t_assigned:
+            try:
+                add_new_task(db_config, t_name, t_assigned, t_contact, str(t_date), t_status)
+                st.success("✅ تمت الإضافة بنجاح!")
+                st.rerun() # تحديث فوري للصفحة
+            except Exception as e:
+                st.error(f"خطأ أثناء الإضافة: {e}")
+        else:
+            st.warning("رجاءً إدخال اسم المهمة والمسند إليه على الأقل.")
